@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JSCB — Joint Process Control Board</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <div class="eyebrow">WORKSHOP CONTROL SYSTEM</div>
+      <h1>JSCB</h1>
+      <p>JPCB A + JPCB B dalam satu papan kontrol</p>
+    </div>
+    <div class="top-actions">
+      <span id="clock">--:--:--</span>
+      <button id="refreshBtn">↻ Refresh</button>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-page="jscb">JSCB</button>
+    <button class="tab" data-page="notification">Notifikasi</button>
+  </nav>
+
+  <main>
+    <section id="page-jscb" class="page active">
+      <div class="toolbar">
+        <div class="search-wrap">
+          <input id="searchInput" type="search" placeholder="Cari WO, nopol, kendaraan, proses...">
+        </div>
+        <div class="filters">
+          <button class="filter active" data-group="ALL">Semua</button>
+          <button class="filter" data-group="A">JPCB A</button>
+          <button class="filter" data-group="B">JPCB B</button>
+        </div>
+      </div>
+
+      <div class="board-header">
+        <div>
+          <h2>Papan JSCB</h2>
+          <span id="summary">Memuat data...</span>
+        </div>
+        <div class="legend">
+          <span><i class="dot a"></i> JPCB A</span>
+          <span><i class="dot b"></i> JPCB B</span>
+        </div>
+      </div>
+
+      <div id="board" class="board"></div>
+    </section>
+
+    <section id="page-notification" class="page">
+      <div class="board-header">
+        <div>
+          <h2>Notifikasi Perpindahan</h2>
+          <span>Daftar perpindahan proses yang terdeteksi</span>
+        </div>
+        <button id="clearDemoBtn" class="ghost">Bersihkan demo</button>
+      </div>
+      <div id="notifications" class="notifications"></div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
