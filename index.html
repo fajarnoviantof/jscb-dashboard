@@ -8,63 +8,60 @@
 </head>
 <body>
   <header class="topbar">
-    <div>
+    <div class="brand">
       <div class="eyebrow">WORKSHOP CONTROL SYSTEM</div>
       <h1>JSCB</h1>
-      <p>JPCB A + JPCB B dalam satu papan kontrol</p>
+      <p>JPCB A + JPCB B • Timeline Produksi</p>
     </div>
     <div class="top-actions">
-      <span id="clock">--:--:--</span>
-      <button id="refreshBtn">↻ Refresh</button>
+      <div id="clock" class="clock">--:--:--</div>
+      <button id="refreshBtn" class="btn primary">↻ Refresh</button>
     </div>
   </header>
 
   <nav class="tabs">
     <button class="tab active" data-page="jscb">JSCB</button>
-    <button class="tab" data-page="notification">Notifikasi</button>
+    <button class="tab" data-page="notification">Notifikasi <span id="notifBadge" class="badge">0</span></button>
   </nav>
 
   <main>
     <section id="page-jscb" class="page active">
       <div class="toolbar">
         <div class="search-wrap">
-          <input id="searchInput" type="search" placeholder="Cari WO, nopol, kendaraan, proses...">
+          <span>⌕</span>
+          <input id="searchInput" type="search" placeholder="Cari WO, nopol, kendaraan, SA, proses...">
         </div>
         <div class="filters">
-          <button class="filter active" data-group="ALL">Semua</button>
+          <button class="filter active" data-group="ALL">SEMUA</button>
           <button class="filter" data-group="A">JPCB A</button>
           <button class="filter" data-group="B">JPCB B</button>
         </div>
+        <div id="summary" class="summary">Memuat data...</div>
       </div>
 
-      <div class="board-header">
-        <div>
-          <h2>Papan JSCB</h2>
-          <span id="summary">Memuat data...</span>
-        </div>
-        <div class="legend">
-          <span><i class="dot a"></i> JPCB A</span>
-          <span><i class="dot b"></i> JPCB B</span>
+      <div class="board-shell">
+        <div id="board" class="timeline-board">
+          <div class="loading">Memuat timeline...</div>
         </div>
       </div>
-
-      <div id="board" class="board"></div>
+      <div class="scroll-hint">Geser horizontal untuk melihat jam/hari berikutnya • Geser vertikal untuk melihat semua unit</div>
     </section>
 
     <section id="page-notification" class="page">
-      <div class="board-header">
+      <div class="section-head">
         <div>
-          <h2>Notifikasi Perpindahan</h2>
-          <span>Daftar perpindahan proses yang terdeteksi</span>
+          <h2>NOTIFIKASI</h2>
+          <p>Sumber data: sheet <strong>NOTIFIKASI</strong></p>
         </div>
-        <button id="clearDemoBtn" class="ghost">Bersihkan demo</button>
+        <button id="refreshNotifBtn" class="btn">↻ Refresh</button>
       </div>
-      <div id="notifications" class="notifications"></div>
+      <div id="notifications" class="notification-list">
+        <div class="loading">Memuat notifikasi...</div>
+      </div>
     </section>
   </main>
 
   <div id="toast" class="toast"></div>
-
   <script src="app.js"></script>
 </body>
 </html>

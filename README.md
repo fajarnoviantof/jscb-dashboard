@@ -1,55 +1,57 @@
-# JSCB — Joint Process Control Board
+# JSCB GitHub — Timeline A + B
 
-Prototype frontend untuk menggabungkan papan **JPCB A + JPCB B** menjadi satu tampilan JSCB.
+Versi ini mengubah tampilan dari **7 kolom proses/Kanban** menjadi **timeline horizontal seperti spreadsheet JPCB**.
 
-## Prinsip penting
+## Struktur
 
-Project ini **tidak mengubah spreadsheet atau Apps Script lama**.
+- `index.html` — tampilan.
+- `style.css` — CSS timeline.
+- `app.js` — frontend pembaca JSON.
+- `GitHubAPI.gs` — Apps Script read-only untuk mengambil JPCB A, JPCB B dan NOTIFIKASI.
 
-Struktur yang dipertahankan:
-- JPCB A tetap berjalan.
-- JPCB B tetap berjalan.
-- Sistem notifikasi lama tetap berjalan.
-- GitHub hanya menjadi **lapisan tampilan/dashboard**.
+## Penting
 
-## Isi
+`GitHubAPI.gs` sebaiknya dibuat sebagai **project Apps Script terpisah** tetapi menggunakan spreadsheet yang sama. Jangan mengganti `doGet()` pada sistem JPCB/QC yang sudah ada.
 
-- `index.html` — halaman utama.
-- `style.css` — tampilan responsive.
-- `app.js` — logika papan JSCB dan notifikasi demo.
+### 1. Apps Script
 
-## Tampilan JSCB
+Buat project Apps Script baru → tambahkan `GitHubAPI.gs` → paste kode → Deploy sebagai Web App.
 
-Papan memiliki 7 kolom proses:
+Set akses sesuai kebutuhan dashboard. Setelah mendapat URL `/exec`, masukkan ke:
 
-1. Panel Repair
-2. Putty / Surfacer
-3. Masking / Spraying
-4. Poles
-5. Reassy
-6. Finishing
-7. FI
+```javascript
+const API_URL = "URL_WEB_APP_APPS_SCRIPT";
+```
 
-Unit dari JPCB A dan JPCB B ditampilkan pada papan yang sama.
+pada `app.js`.
 
-## Tahap berikutnya
+### 2. GitHub Pages
 
-Data demo di `app.js` nantinya diganti dengan data aktual dari sumber yang aman, misalnya endpoint JSON dari sistem yang sudah ada.
+Upload:
 
-Arsitektur yang disarankan:
+- `index.html`
+- `style.css`
+- `app.js`
 
-Google Sheets
-   ↓
-Apps Script / endpoint data
-   ↓
-JSCB GitHub
-   ├── Papan JSCB
-   ├── Pencarian
-   ├── Filter JPCB A/B
-   └── Notifikasi
+`GitHubAPI.gs` tidak perlu di-upload ke GitHub Pages.
 
-Tidak perlu memindahkan database ke GitHub.
+## Asumsi struktur JPCB
 
-## Catatan
+- Baris tanggal timeline: 2
+- Baris jam: 3
+- Timeline mulai kolom G
+- Data unit mulai baris 4
 
-GitHub Pages hanya menyajikan frontend. Data sensitif workshop sebaiknya tetap berada di Google Sheets/Apps Script dan akses endpoint perlu dikontrol.
+Jika struktur sumber berbeda, ubah `API_CONFIG` di `GitHubAPI.gs` saja.
+
+## Fitur
+
+- JPCB A + JPCB B digabung dalam satu papan.
+- Header hari → tanggal → jam.
+- Kolom GRUP, IDENTITAS UNIT, ACTUAL PROSES dibuat sticky.
+- Timeline horizontal dan scroll vertikal.
+- Search WO/nopol/kendaraan/SA/proses.
+- Filter JPCB A / JPCB B / Semua.
+- Notifikasi hanya dibaca dari sheet `NOTIFIKASI`.
+- Auto refresh 60 detik.
+- Tidak ada `localStorage` untuk data produksi.
