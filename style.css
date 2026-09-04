@@ -64,8 +64,8 @@ body {
 ===================================== */
 
 .container {
+  width: 100%;
   padding: 16px;
-  max-width: 100%;
 }
 
 
@@ -76,7 +76,6 @@ body {
 .tabs {
   display: flex;
   gap: 6px;
-
   margin-bottom: 14px;
 }
 
@@ -165,7 +164,6 @@ body {
 
 .search-box input {
   width: 100%;
-
   height: 40px;
 
   padding: 0 14px;
@@ -183,7 +181,6 @@ body {
 .search-box input:focus {
   border-color: #64748b;
 }
-
 
 .filter-group {
   display: flex;
@@ -210,10 +207,8 @@ body {
 .filter-btn.active {
   background: #374151;
   color: white;
-
   border-color: #374151;
 }
-
 
 .refresh-btn {
   height: 40px;
@@ -287,15 +282,13 @@ body {
 
 .status {
   font-size: 12px;
-
   color: #6b7280;
-
   margin-bottom: 8px;
 }
 
 
 /* =====================================
-   TIMELINE OUTER
+   TIMELINE WRAPPER
 ===================================== */
 
 .timeline-wrapper {
@@ -321,19 +314,30 @@ body {
 
 .timeline-board {
   width: max-content;
-
   min-width: 100%;
-
-  position: relative;
 }
 
 
 /* =====================================
-   ROW
+   TIMELINE ROW
 ===================================== */
 
 .timeline-row {
   display: grid;
+
+  /*
+    7 kolom tetap:
+
+    1. GRUP
+    2. IDENTITAS UNIT
+    3. TGL IN
+    4. JAM IN
+    5. TGT OUT
+    6. JAM OUT
+    7. ACTUAL PROSES
+
+    lalu timeline.
+  */
 
   grid-template-columns:
     70px
@@ -343,7 +347,10 @@ body {
     90px
     90px
     130px
-    repeat(var(--timeline-count), 65px);
+    repeat(
+      var(--timeline-count),
+      65px
+    );
 
   min-height: 38px;
 }
@@ -370,7 +377,6 @@ body {
 
 .header-day {
   min-height: 28px;
-
   font-size: 11px;
 
   background: #dbeafe !important;
@@ -378,7 +384,6 @@ body {
 
 .header-date {
   min-height: 27px;
-
   font-size: 11px;
 
   background: #eff6ff !important;
@@ -386,7 +391,6 @@ body {
 
 .header-time {
   min-height: 30px;
-
   font-size: 12px;
 
   background: #f8fafc !important;
@@ -421,7 +425,7 @@ body {
 
 
 /* =====================================
-   LEFT FIXED COLUMNS
+   STICKY COLUMNS
 ===================================== */
 
 .sticky-col {
@@ -432,10 +436,11 @@ body {
   background: white;
 }
 
-.timeline-header .sticky-col {
-  z-index: 80;
-  background: #e5e7eb;
-}
+
+/*
+   Posisi sticky harus mengikuti
+   lebar kolom sebelumnya.
+*/
 
 .col-group {
   left: 0;
@@ -463,6 +468,17 @@ body {
 
 .col-actual {
   left: 750px;
+}
+
+
+/*
+   Header sticky harus berada
+   di atas body.
+*/
+
+.timeline-header .sticky-col {
+  z-index: 80;
+  background: #e5e7eb;
 }
 
 
@@ -499,7 +515,7 @@ body {
 
 
 /* =====================================
-   TIMELINE CELLS
+   TIMELINE CELL
 ===================================== */
 
 .timeline-cell {
@@ -516,33 +532,57 @@ body {
   background: #dbeafe;
 }
 
+
+/* PROCESS 1 */
+
 .timeline-cell.process-1 {
   background: #dbeafe;
 }
+
+
+/* PROCESS 2 */
 
 .timeline-cell.process-2 {
   background: #dcfce7;
 }
 
+
+/* PROCESS 3 */
+
 .timeline-cell.process-3 {
   background: #fef3c7;
 }
+
+
+/* PROCESS 4 */
 
 .timeline-cell.process-4 {
   background: #fee2e2;
 }
 
+
+/* PROCESS 5 */
+
 .timeline-cell.process-5 {
   background: #ede9fe;
 }
+
+
+/* PROCESS 6 */
 
 .timeline-cell.process-6 {
   background: #cffafe;
 }
 
+
+/* PROCESS 7 */
+
 .timeline-cell.process-7 {
   background: #fce7f3;
 }
+
+
+/* TEXT DI DALAM TIMELINE */
 
 .timeline-cell.text-cell {
   font-size: 9px;
@@ -550,6 +590,8 @@ body {
   white-space: normal;
 
   line-height: 1.1;
+
+  text-align: center;
 }
 
 
@@ -567,7 +609,7 @@ body {
 
 
 /* =====================================
-   EMPTY
+   EMPTY BOARD
 ===================================== */
 
 .empty-board {
@@ -735,4 +777,5 @@ body {
   .timeline-wrapper {
     max-height: calc(100vh - 290px);
   }
+
 }
