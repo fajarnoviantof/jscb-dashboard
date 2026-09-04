@@ -1,314 +1,1852 @@
-/*
- * JSCB GITHUB
- * Frontend read-only.
- * Sumber: Apps Script JSON endpoint yang membaca JPCB A, JPCB B, NOTIFIKASI.
- */
+/* =========================================================
+   JSCB GITHUB DASHBOARD
+   JPCB A + JPCB B
+========================================================= */
 
-const API_URL = "PASTE_APPS_SCRIPT_WEB_APP_URL_HERE";
-const AUTO_REFRESH_MS = 60000;
 
-let appData = { board: { columns: [], units: [] }, notifications: [] };
-let currentGroup = "ALL";
+/* =========================================================
+   CONFIG
+========================================================= */
 
-const STAGE_NAMES = {
-  1: "Panel Repair",
-  2: "Putty / Surfacer",
-  3: "Masking / Spraying",
-  4: "Surfacer / Poles",
-  5: "Masking / Reassy",
-  6: "Spraying / Finishing",
-  7: "FI / Final"
+const API_URL =
+  "https://script.google.com/macros/s/AKfycbwiSMC42T0njf7NYPCAtKzqepEd1Cthm2tLiBkzeDKMvG_UqsJ60Kz8LdL2nazCvvEstg/exec";
+
+
+const REFRESH_INTERVAL = 60000;
+
+
+/* =========================================================
+   STATE
+========================================================= */
+
+let state = {
+
+  board: {
+    columns: [],
+    units: []
+  },
+
+  notifications: [],
+
+  filter: "ALL",
+
+  search: "",
+
+  loading: false
+
 };
 
-document.addEventListener("DOMContentLoaded", () => {
-  bindUI();
-  updateClock();
-  setInterval(updateClock, 1000);
-  setInterval(() => loadData(true), AUTO_REFRESH_MS);
-  loadData(false);
-});
 
-function bindUI() {
-  document.querySelectorAll(".tab").forEach(btn => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
-      document.querySelectorAll(".page").forEach(x => x.classList.remove("active"));
-      btn.classList.add("active");
-      document.getElementById("page-" + btn.dataset.page).classList.add("active");
-    });
-  });
+/* =========================================================
+   INIT
+========================================================= */
 
-  document.querySelectorAll(".filter").forEach(btn => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll(".filter").forEach(x => x.classList.remove("active"));
-      btn.classList.add("active");
-      currentGroup = btn.dataset.group;
-      renderBoard();
-    });
-  });
+document.addEventListener(
+  "DOMContentLoaded",
+  () => {
 
-  document.getElementById("searchInput").addEventListener("input", renderBoard);
-  document.getElementById("refreshBtn").addEventListener("click", () => loadData(false));
-  document.getElementById("refreshNotifBtn").addEventListener("click", () => loadData(false));
-}
+    setupTabs();
 
-async function loadData(silent) {
-  if (!API_URL || API_URL.includes("PASTE_APPS_SCRIPT")) {
-    showError("API_URL belum diisi. Masukkan URL Web App Apps Script pada app.js.");
+    setupFilters();
+
+    setupSearch();
+
+    setupRefresh();
+
+    updateClock();
+
+    setInterval(
+      updateClock,
+      1000
+    );
+
+    loadData();
+
+    setInterval(
+      loadData,
+      REFRESH_INTERVAL
+    );
+
+  }
+);
+
+
+/* =========================================================
+   LOAD DATA
+========================================================= */
+
+async function loadData() {
+
+  if (state.loading) {
     return;
   }
 
-  setLoading(true);
-  try {
-    const url = API_URL + (API_URL.includes("?") ? "&" : "?") + "action=all&_=" + Date.now();
-    const response = await fetch(url, { cache: "no-store" });
-    if (!response.ok) throw new Error("HTTP " + response.status);
-    const json = await response.json();
-    if (!json.ok) throw new Error(json.message || "API mengembalikan error");
+  state.loading = true;
 
-    appData = normalizeApiData(json);
-    renderBoard();
-    renderNotifications();
-    if (!silent) showToast("Data JSCB diperbarui");
-  } catch (err) {
-    console.error(err);
-    showError("Gagal mengambil data: " + err.message);
+  setStatus(
+    "Mengambil data dari JPCB A + JPCB B..."
+  );
+
+  try {
+
+    const response = await fetch(
+      API_URL +
+      "?action=all&_=" +
+      Date.now(),
+      {
+        method: "GET",
+        cache: "no-store"
+      }
+    );
+
+
+    if (!response.ok) {
+
+      throw new Error(
+        "HTTP " +
+        response.status
+      );
+
+    }
+
+
+    const data =
+      await response.json();
+
+
+    if (!data.ok) {
+
+      throw new Error(
+        data.error ||
+        "API mengembalikan error"
+      );
+
+    }
+
+
+    state.board =
+      normalizeBoard(
+        data.board
+      );
+
+
+    state.notifications =
+      Array.isArray(
+        data.notifications
+      )
+        ? data.notifications
+        : [];
+
+
+    renderAll();
+
+
+    setStatus(
+      "Data terakhir diperbarui " +
+      formatTime(new Date())
+    );
+
+
+  } catch (error) {
+
+    console.error(
+      "Gagal mengambil API:",
+      error
+    );
+
+
+    setStatus(
+      "Gagal mengambil data: " +
+      error.message
+    );
+
+
   } finally {
-    setLoading(false);
+
+    state.loading = false;
+
   }
+
 }
 
-function normalizeApiData(json) {
-  const board = json.board || {};
-  const columns = Array.isArray(board.columns) ? board.columns : [];
-  const units = Array.isArray(board.units) ? board.units : [];
-  const notifications = Array.isArray(json.notifications) ? json.notifications : [];
+
+/* =========================================================
+   NORMALIZE BOARD
+========================================================= */
+
+function normalizeBoard(board) {
+
+  if (!board) {
+
+    return {
+      columns: [],
+      units: []
+    };
+
+  }
+
+
+  const columns =
+    Array.isArray(board.columns)
+      ? board.columns
+      : [];
+
+
+  const units =
+    Array.isArray(board.units)
+      ? board.units
+      : [];
+
+
+  /*
+    API mengirim timeline A dan B.
+    Kita buat timeline master berdasarkan
+    kombinasi tanggal + jam.
+  */
+
+  const masterMap =
+    new Map();
+
+
+  columns.forEach(
+    column => {
+
+      const key =
+        makeColumnKey(
+          column.date,
+          column.time
+        );
+
+
+      if (!masterMap.has(key)) {
+
+        masterMap.set(
+          key,
+          {
+            date: column.date || "",
+            time: column.time || "",
+            key: key
+          }
+        );
+
+      }
+
+    }
+  );
+
+
+  const masterColumns =
+    Array.from(
+      masterMap.values()
+    );
+
+
+  /*
+    Simpan pemetaan kolom berdasarkan source.
+  */
+
+  const sourceMaps = {};
+
+
+  ["JPCB A", "JPCB B"].forEach(
+    source => {
+
+      sourceMaps[source] = {};
+
+      columns.forEach(
+        (column, index) => {
+
+          if (
+            column.source !== source
+          ) {
+            return;
+          }
+
+
+          const key =
+            makeColumnKey(
+              column.date,
+              column.time
+            );
+
+
+          if (
+            sourceMaps[source][key] === undefined
+          ) {
+
+            sourceMaps[source][key] =
+              index -
+              getSourceStartIndex(
+                columns,
+                source
+              );
+
+          }
+
+        }
+      );
+
+    }
+  );
+
+
+  /*
+    Lebih aman: buat daftar kolom timeline
+    masing-masing source secara berurutan.
+  */
+
+  const sourceColumns = {};
+
+  ["JPCB A", "JPCB B"].forEach(
+    source => {
+
+      sourceColumns[source] =
+        columns.filter(
+          column =>
+            column.source === source
+        );
+
+    }
+  );
+
+
+  /*
+    Mapping timeline unit ke master column.
+  */
+
+  const normalizedUnits =
+    units.map(
+      unit => {
+
+        const source =
+          unit.source || "";
+
+
+        const ownColumns =
+          sourceColumns[source] || [];
+
+
+        const ownTimeline =
+          Array.isArray(
+            unit.timeline
+          )
+            ? unit.timeline
+            : [];
+
+
+        const timelineMap =
+          {};
+
+
+        ownColumns.forEach(
+          (column, index) => {
+
+            const key =
+              makeColumnKey(
+                column.date,
+                column.time
+              );
+
+
+            timelineMap[key] =
+              ownTimeline[index] || "";
+
+          }
+        );
+
+
+        const timeline =
+          masterColumns.map(
+            column =>
+              timelineMap[column.key] || ""
+          );
+
+
+        return {
+
+          ...unit,
+
+          timeline
+
+        };
+
+      }
+    );
+
 
   return {
-    board: { columns, units },
-    notifications
+
+    columns: masterColumns,
+
+    units: normalizedUnits
+
   };
+
 }
+
+
+/* =========================================================
+   COLUMN KEY
+========================================================= */
+
+function makeColumnKey(
+  date,
+  time
+) {
+
+  return (
+    String(date || "").trim() +
+    "||" +
+    String(time || "").trim()
+  );
+
+}
+
+
+/* =========================================================
+   SOURCE START INDEX
+========================================================= */
+
+function getSourceStartIndex(
+  columns,
+  source
+) {
+
+  const index =
+    columns.findIndex(
+      column =>
+        column.source === source
+    );
+
+
+  return index < 0
+    ? 0
+    : index;
+
+}
+
+
+/* =========================================================
+   RENDER ALL
+========================================================= */
+
+function renderAll() {
+
+  renderSummary();
+
+  renderBoard();
+
+  renderNotifications();
+
+}
+
+
+/* =========================================================
+   FILTER
+========================================================= */
+
+function getFilteredUnits() {
+
+  let units =
+    state.board.units || [];
+
+
+  if (
+    state.filter !== "ALL"
+  ) {
+
+    units =
+      units.filter(
+        unit =>
+          unit.source ===
+          state.filter
+      );
+
+  }
+
+
+  const search =
+    state.search
+      .trim()
+      .toLowerCase();
+
+
+  if (search) {
+
+    units =
+      units.filter(
+        unit => {
+
+          const text =
+            [
+              unit.identity,
+              unit.actualProcess,
+              unit.tglIn,
+              unit.jamIn,
+              unit.tgtOut,
+              unit.jamOut,
+              unit.source
+            ]
+              .join(" ")
+              .toLowerCase();
+
+
+          return text.includes(
+            search
+          );
+
+        }
+      );
+
+  }
+
+
+  return units;
+
+}
+
+
+/* =========================================================
+   SUMMARY
+========================================================= */
+
+function renderSummary() {
+
+  const units =
+    state.board.units || [];
+
+
+  const total =
+    units.length;
+
+
+  const totalA =
+    units.filter(
+      unit =>
+        unit.source === "JPCB A"
+    ).length;
+
+
+  const totalB =
+    units.filter(
+      unit =>
+        unit.source === "JPCB B"
+    ).length;
+
+
+  const totalNotifications =
+    state.notifications.length;
+
+
+  setText(
+    "totalUnits",
+    total
+  );
+
+
+  setText(
+    "totalA",
+    totalA
+  );
+
+
+  setText(
+    "totalB",
+    totalB
+  );
+
+
+  setText(
+    "totalNotifications",
+    totalNotifications
+  );
+
+
+  const badge =
+    document.getElementById(
+      "notificationBadge"
+    );
+
+
+  if (
+    totalNotifications > 0
+  ) {
+
+    badge.textContent =
+      totalNotifications;
+
+    badge.classList.remove(
+      "hidden"
+    );
+
+  } else {
+
+    badge.classList.add(
+      "hidden"
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   RENDER BOARD
+========================================================= */
 
 function renderBoard() {
-  const boardEl = document.getElementById("board");
-  const search = document.getElementById("searchInput").value.toLowerCase().trim();
-  const columns = appData.board.columns || [];
 
-  let units = (appData.board.units || []).filter(unit => {
-    const group = normalizeGroup(unit.group, unit.sheet);
-    const groupOK = currentGroup === "ALL" || group === currentGroup;
-    const text = [unit.wo, unit.nopol, unit.vehicle, unit.color, unit.sa, unit.process, unit.sheet, group]
-      .map(cleanText).join(" ").toLowerCase();
-    return groupOK && text.includes(search);
-  });
+  const board =
+    document.getElementById(
+      "timelineBoard"
+    );
 
-  units.sort((a, b) => {
-    const ga = normalizeGroup(a.group, a.sheet);
-    const gb = normalizeGroup(b.group, b.sheet);
-    if (ga !== gb) return ga.localeCompare(gb);
-    return cleanText(a.wo).localeCompare(cleanText(b.wo), undefined, { numeric: true });
-  });
 
-  document.getElementById("summary").textContent = `${units.length} unit • JPCB A + JPCB B • ${columns.length} slot waktu`;
+  const columns =
+    state.board.columns || [];
 
-  if (!columns.length) {
-    boardEl.innerHTML = `<div class="error">Header timeline belum ditemukan dari JPCB A / JPCB B.</div>`;
+
+  const units =
+    getFilteredUnits();
+
+
+  board.innerHTML = "";
+
+
+  if (
+    columns.length === 0
+  ) {
+
+    board.innerHTML = `
+      <div class="empty-board">
+        Tidak ada data timeline.
+      </div>
+    `;
+
     return;
+
   }
 
-  const dayGroups = groupColumnsByDate(columns);
-  const nowKey = getCurrentSlotKey();
 
-  let html = `<table class="timeline-table"><thead>`;
+  board.style.setProperty(
+    "--timeline-count",
+    columns.length
+  );
 
-  html += `<tr class="day">
-    <th class="left group-col" rowspan="3">GRUP</th>
-    <th class="left identity-col" rowspan="3">IDENTITAS UNIT</th>
-    <th class="left process-col" rowspan="3">ACTUAL PROSES</th>`;
-  dayGroups.forEach(group => {
-    html += `<th colspan="${group.count}">${escapeHtml(group.day)}</th>`;
-  });
-  html += `</tr>`;
 
-  html += `<tr class="date">`;
-  dayGroups.forEach(group => {
-    group.columns.forEach(col => {
-      html += `<th>${escapeHtml(col.dateLabel || "")}</th>`;
-    });
-  });
-  html += `</tr>`;
+  /*
+    HEADER
+  */
 
-  html += `<tr class="time">`;
-  dayGroups.forEach(group => {
-    group.columns.forEach(col => {
-      const nowClass = col.key === nowKey ? " now" : "";
-      html += `<th class="time-col${nowClass}">${escapeHtml(col.timeLabel || "")}</th>`;
-    });
-  });
-  html += `</tr></thead><tbody>`;
+  renderHeader(
+    board,
+    columns
+  );
 
-  if (!units.length) {
-    html += `<tr><td class="left" colspan="${columns.length + 3}" style="padding:25px;text-align:center">Tidak ada unit yang sesuai filter.</td></tr>`;
-  } else {
-    let previousGroup = null;
-    units.forEach(unit => {
-      const group = normalizeGroup(unit.group, unit.sheet);
-      const separator = previousGroup && previousGroup !== group ? " group-separator" : "";
-      previousGroup = group;
-      html += `<tr class="${separator.trim()}">`;
-      html += `<td class="left group-col group-cell ${group.toLowerCase()}">${escapeHtml(group)}</td>`;
-      html += `<td class="left identity-col">
-        <div class="identity">
-          <span class="dot ${group.toLowerCase()}"></span>
-          <span class="wo">${escapeHtml(unit.wo)}</span>
-          <span class="detail">${escapeHtml(unit.nopol)} • ${escapeHtml(unit.vehicle)} • ${escapeHtml(unit.color || "")}</span>
-        </div>
-      </td>`;
-      html += `<td class="left process-col process-cell">
-        <span class="stage">${escapeHtml(unit.process || deriveProcess(unit))}</span>
-        <span class="sheet">${escapeHtml(unit.sa || "")} ${unit.sheet ? "• " + escapeHtml(unit.sheet) : ""}</span>
-      </td>`;
 
-      const values = Array.isArray(unit.timeline) ? unit.timeline : [];
-      columns.forEach((col, index) => {
-        const value = values[index] ?? "";
-        const cls = timelineClass(value, col);
-        html += `<td class="timeline-cell time-col ${cls}" title="${escapeHtml(unit.wo)} • ${escapeHtml(col.dateLabel || "")} ${escapeHtml(col.timeLabel || "")}">${escapeHtml(value)}</td>`;
-      });
-      html += `</tr>`;
-    });
+  /*
+    DATA
+  */
+
+  if (
+    units.length === 0
+  ) {
+
+    const empty =
+      document.createElement(
+        "div"
+      );
+
+
+    empty.className =
+      "empty-board";
+
+
+    empty.textContent =
+      "Tidak ada unit yang sesuai filter.";
+
+
+    board.appendChild(
+      empty
+    );
+
+
+    return;
+
   }
 
-  html += `</tbody></table>`;
-  boardEl.innerHTML = html;
+
+  units.forEach(
+    unit => {
+
+      renderUnitRow(
+        board,
+        unit,
+        columns
+      );
+
+    }
+  );
+
 }
+
+
+/* =========================================================
+   HEADER
+========================================================= */
+
+function renderHeader(
+  board,
+  columns
+) {
+
+  /*
+    BARIS 1
+    HARI
+  */
+
+  const dayRow =
+    createTimelineRow(
+      "timeline-header"
+    );
+
+
+  addHeaderFixedCells(
+    dayRow,
+    "Hari"
+  );
+
+
+  let previousDay = "";
+
+
+  columns.forEach(
+    column => {
+
+      const cell =
+        createCell(
+          "cell header-day"
+        );
+
+
+      const day =
+        getDayName(
+          column.date
+        );
+
+
+      if (
+        day !== previousDay
+      ) {
+
+        cell.textContent =
+          day;
+
+        previousDay =
+          day;
+
+      } else {
+
+        cell.textContent =
+          "";
+
+      }
+
+
+      dayRow.appendChild(
+        cell
+      );
+
+    }
+  );
+
+
+  board.appendChild(
+    dayRow
+  );
+
+
+  /*
+    BARIS 2
+    TANGGAL
+  */
+
+  const dateRow =
+    createTimelineRow(
+      "timeline-header"
+    );
+
+
+  addHeaderFixedCells(
+    dateRow,
+    "Tanggal"
+  );
+
+
+  columns.forEach(
+    column => {
+
+      const cell =
+        createCell(
+          "cell header-date"
+        );
+
+
+      cell.textContent =
+        column.date || "";
+
+
+      dateRow.appendChild(
+        cell
+      );
+
+    }
+  );
+
+
+  board.appendChild(
+    dateRow
+  );
+
+
+  /*
+    BARIS 3
+    JAM
+  */
+
+  const timeRow =
+    createTimelineRow(
+      "timeline-header"
+    );
+
+
+  addHeaderFixedCells(
+    timeRow,
+    "Jam"
+  );
+
+
+  columns.forEach(
+    column => {
+
+      const cell =
+        createCell(
+          "cell header-time"
+        );
+
+
+      cell.textContent =
+        column.time || "";
+
+
+      timeRow.appendChild(
+        cell
+      );
+
+    }
+  );
+
+
+  board.appendChild(
+    timeRow
+  );
+
+}
+
+
+/* =========================================================
+   FIXED HEADER CELLS
+========================================================= */
+
+function addHeaderFixedCells(
+  row,
+  firstLabel
+) {
+
+  const labels = [
+
+    "GRUP",
+
+    "IDENTITAS UNIT",
+
+    "TGL IN",
+
+    "JAM IN",
+
+    "TGT OUT",
+
+    "JAM OUT",
+
+    "ACTUAL PROSES"
+
+  ];
+
+
+  labels.forEach(
+    (label, index) => {
+
+      const cell =
+        createCell(
+          "cell sticky-col"
+        );
+
+
+      if (
+        index === 0
+      ) {
+
+        cell.classList.add(
+          "col-group"
+        );
+
+      }
+
+      if (
+        index === 1
+      ) {
+
+        cell.classList.add(
+          "col-identity"
+        );
+
+      }
+
+      if (
+        index === 2
+      ) {
+
+        cell.classList.add(
+          "col-tgl-in"
+        );
+
+      }
+
+      if (
+        index === 3
+      ) {
+
+        cell.classList.add(
+          "col-jam-in"
+        );
+
+      }
+
+      if (
+        index === 4
+      ) {
+
+        cell.classList.add(
+          "col-tgt-out"
+        );
+
+      }
+
+      if (
+        index === 5
+      ) {
+
+        cell.classList.add(
+          "col-jam-out"
+        );
+
+      }
+
+      if (
+        index === 6
+      ) {
+
+        cell.classList.add(
+          "col-actual"
+        );
+
+      }
+
+
+      cell.textContent =
+        label;
+
+
+      row.appendChild(
+        cell
+      );
+
+    }
+  );
+
+}
+
+
+/* =========================================================
+   UNIT ROW
+========================================================= */
+
+function renderUnitRow(
+  board,
+  unit,
+  columns
+) {
+
+  const row =
+    createTimelineRow();
+
+
+  const sourceClass =
+    unit.source === "JPCB A"
+      ? "source-a"
+      : "source-b";
+
+
+  /*
+    GRUP
+  */
+
+  const groupCell =
+    createCell(
+      "cell sticky-col col-group " +
+      sourceClass
+    );
+
+
+  groupCell.textContent =
+    unit.source || "";
+
+
+  row.appendChild(
+    groupCell
+  );
+
+
+  /*
+    IDENTITAS
+  */
+
+  const identityCell =
+    createCell(
+      "cell sticky-col col-identity identity-cell"
+    );
+
+
+  identityCell.title =
+    unit.identity || "";
+
+
+  identityCell.textContent =
+    unit.identity || "";
+
+
+  row.appendChild(
+    identityCell
+  );
+
+
+  /*
+    TGL IN
+  */
+
+  row.appendChild(
+    createStickyCell(
+      "col-tgl-in",
+      unit.tglIn
+    )
+  );
+
+
+  /*
+    JAM IN
+  */
+
+  row.appendChild(
+    createStickyCell(
+      "col-jam-in",
+      unit.jamIn
+    )
+  );
+
+
+  /*
+    TGT OUT
+  */
+
+  row.appendChild(
+    createStickyCell(
+      "col-tgt-out",
+      unit.tgtOut
+    )
+  );
+
+
+  /*
+    JAM OUT
+  */
+
+  row.appendChild(
+    createStickyCell(
+      "col-jam-out",
+      unit.jamOut
+    )
+  );
+
+
+  /*
+    ACTUAL PROSES
+  */
+
+  const actualCell =
+    createCell(
+      "cell sticky-col col-actual actual-cell"
+    );
+
+
+  actualCell.title =
+    unit.actualProcess || "";
+
+
+  actualCell.textContent =
+    unit.actualProcess || "";
+
+
+  row.appendChild(
+    actualCell
+  );
+
+
+  /*
+    TIMELINE
+  */
+
+  const timeline =
+    Array.isArray(
+      unit.timeline
+    )
+      ? unit.timeline
+      : [];
+
+
+  columns.forEach(
+    (column, index) => {
+
+      const value =
+        timeline[index] || "";
+
+
+      const cell =
+        createCell(
+          "cell timeline-cell"
+        );
+
+
+      cell.textContent =
+        value;
+
+
+      if (!value) {
+
+        cell.classList.add(
+          "empty-cell"
+        );
+
+      } else {
+
+        const process =
+          String(value).trim();
+
+
+        if (
+          /^[1-7]$/.test(process)
+        ) {
+
+          cell.classList.add(
+            "process-" +
+            process
+          );
+
+        } else {
+
+          cell.classList.add(
+            "text-cell"
+          );
+
+        }
+
+      }
+
+
+      if (value) {
+
+        cell.title =
+          String(value);
+
+      }
+
+
+      row.appendChild(
+        cell
+      );
+
+    }
+  );
+
+
+  board.appendChild(
+    row
+  );
+
+}
+
+
+/* =========================================================
+   CREATE ROW
+========================================================= */
+
+function createTimelineRow(
+  extraClass = ""
+) {
+
+  const row =
+    document.createElement(
+      "div"
+    );
+
+
+  row.className =
+    "timeline-row " +
+    extraClass;
+
+
+  return row;
+
+}
+
+
+/* =========================================================
+   CREATE CELL
+========================================================= */
+
+function createCell(
+  className
+) {
+
+  const cell =
+    document.createElement(
+      "div"
+    );
+
+
+  cell.className =
+    className;
+
+
+  return cell;
+
+}
+
+
+/* =========================================================
+   STICKY CELL
+========================================================= */
+
+function createStickyCell(
+  className,
+  value
+) {
+
+  const cell =
+    createCell(
+      "cell sticky-col " +
+      className
+    );
+
+
+  cell.textContent =
+    value || "";
+
+
+  return cell;
+
+}
+
+
+/* =========================================================
+   NOTIFICATIONS
+========================================================= */
 
 function renderNotifications() {
-  const box = document.getElementById("notifications");
-  const list = appData.notifications || [];
-  document.getElementById("notifBadge").textContent = list.length;
 
-  if (!list.length) {
-    box.innerHTML = `<div class="loading">Belum ada data pada sheet NOTIFIKASI.</div>`;
+  const container =
+    document.getElementById(
+      "notificationList"
+    );
+
+
+  container.innerHTML = "";
+
+
+  const notifications =
+    state.notifications || [];
+
+
+  if (
+    notifications.length === 0
+  ) {
+
+    container.innerHTML = `
+      <div class="empty">
+        Tidak ada notifikasi.
+      </div>
+    `;
+
+    return;
+
+  }
+
+
+  notifications
+    .slice()
+    .reverse()
+    .forEach(
+      notification => {
+
+        const card =
+          document.createElement(
+            "div"
+          );
+
+
+        card.className =
+          "notification-card";
+
+
+        const entries =
+          Object.entries(
+            notification
+          );
+
+
+        if (
+          entries.length === 0
+        ) {
+
+          return;
+
+        }
+
+
+        const title =
+          entries[0][1] ||
+          "NOTIFIKASI";
+
+
+        const titleEl =
+          document.createElement(
+            "div"
+          );
+
+
+        titleEl.className =
+          "notification-card-title";
+
+
+        titleEl.textContent =
+          title;
+
+
+        card.appendChild(
+          titleEl
+        );
+
+
+        const body =
+          document.createElement(
+            "div"
+          );
+
+
+        body.className =
+          "notification-card-body";
+
+
+        entries
+          .slice(1)
+          .forEach(
+            ([key, value]) => {
+
+              if (
+                !value
+              ) {
+                return;
+              }
+
+
+              const line =
+                document.createElement(
+                  "div"
+                );
+
+
+              line.innerHTML =
+                `
+                  <strong>
+                    ${escapeHtml(key)}
+                  </strong>
+                  :
+                  ${escapeHtml(value)}
+                `;
+
+
+              body.appendChild(
+                line
+              );
+
+            }
+          );
+
+
+        card.appendChild(
+          body
+        );
+
+
+        container.appendChild(
+          card
+        );
+
+      }
+    );
+
+}
+
+
+/* =========================================================
+   TABS
+========================================================= */
+
+function setupTabs() {
+
+  const tabs =
+    document.querySelectorAll(
+      ".tab"
+    );
+
+
+  tabs.forEach(
+    tab => {
+
+      tab.addEventListener(
+        "click",
+        () => {
+
+          const page =
+            tab.dataset.page;
+
+
+          tabs.forEach(
+            item =>
+              item.classList.remove(
+                "active"
+              )
+          );
+
+
+          tab.classList.add(
+            "active"
+          );
+
+
+          document
+            .querySelectorAll(
+              ".page"
+            )
+            .forEach(
+              section =>
+                section.classList.remove(
+                  "active"
+                )
+            );
+
+
+          if (
+            page === "board"
+          ) {
+
+            document
+              .getElementById(
+                "boardPage"
+              )
+              .classList.add(
+                "active"
+              );
+
+          }
+
+
+          if (
+            page === "notifications"
+          ) {
+
+            document
+              .getElementById(
+                "notificationsPage"
+              )
+              .classList.add(
+                "active"
+              );
+
+          }
+
+        }
+      );
+
+    }
+  );
+
+}
+
+
+/* =========================================================
+   FILTERS
+========================================================= */
+
+function setupFilters() {
+
+  const buttons =
+    document.querySelectorAll(
+      ".filter-btn"
+    );
+
+
+  buttons.forEach(
+    button => {
+
+      button.addEventListener(
+        "click",
+        () => {
+
+          buttons.forEach(
+            item =>
+              item.classList.remove(
+                "active"
+              )
+          );
+
+
+          button.classList.add(
+            "active"
+          );
+
+
+          state.filter =
+            button.dataset.filter;
+
+
+          renderBoard();
+
+        }
+      );
+
+    }
+  );
+
+}
+
+
+/* =========================================================
+   SEARCH
+========================================================= */
+
+function setupSearch() {
+
+  const input =
+    document.getElementById(
+      "searchInput"
+    );
+
+
+  input.addEventListener(
+    "input",
+    event => {
+
+      state.search =
+        event.target.value;
+
+
+      renderBoard();
+
+    }
+  );
+
+}
+
+
+/* =========================================================
+   REFRESH BUTTON
+========================================================= */
+
+function setupRefresh() {
+
+  document
+    .getElementById(
+      "refreshBtn"
+    )
+    .addEventListener(
+      "click",
+      loadData
+    );
+
+
+  document
+    .getElementById(
+      "refreshNotificationBtn"
+    )
+    .addEventListener(
+      "click",
+      loadData
+    );
+
+}
+
+
+/* =========================================================
+   CLOCK
+========================================================= */
+
+function updateClock() {
+
+  const now =
+    new Date();
+
+
+  const el =
+    document.getElementById(
+      "clock"
+    );
+
+
+  if (!el) {
     return;
   }
 
-  box.innerHTML = list.map(n => {
-    const status = cleanText(n.status);
-    const statusClass = /selesai|done|closed|read/i.test(status) ? "status-ok" : /open|baru|pending/i.test(status) ? "status-open" : "status-other";
-    return `<div class="notice">
-      <div class="notice-time">${escapeHtml(formatDateTime(n.waktu || n.time))}</div>
-      <div class="notice-main">
-        <strong>WO ${escapeHtml(n.wo)}${n.nopol ? " — " + escapeHtml(n.nopol) : ""}</strong>
-        <span>${escapeHtml(n.kendaraan || n.vehicle || "")} • ${escapeHtml(n.sheet || "")} • Grup ${escapeHtml(n.group || normalizeGroup("", n.sheet))}</span>
-      </div>
-      <div class="notice-next">${escapeHtml(n.dariProses || n.from || "-")} → ${escapeHtml(n.keProses || n.to || "-")} ${n.jadwal ? "• " + escapeHtml(n.jadwal) : ""}</div>
-      <div class="notice-status ${statusClass}">${escapeHtml(status || "-")}</div>
-    </div>`;
-  }).join("");
+
+  el.textContent =
+    now.toLocaleString(
+      "id-ID",
+      {
+        weekday: "short",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      }
+    );
+
 }
 
-function groupColumnsByDate(columns) {
-  const groups = [];
-  columns.forEach(col => {
-    const key = col.dateKey || col.dateLabel || "";
-    let group = groups[groups.length - 1];
-    if (!group || group.key !== key) {
-      group = { key, day: col.dayLabel || dayNameFromDate(col.dateKey), count: 0, columns: [] };
-      groups.push(group);
+
+/* =========================================================
+   DAY NAME
+========================================================= */
+
+function getDayName(
+  dateText
+) {
+
+  if (!dateText) {
+    return "";
+  }
+
+
+  const date =
+    parseSheetDate(
+      dateText
+    );
+
+
+  if (!date) {
+    return "";
+  }
+
+
+  return date.toLocaleDateString(
+    "id-ID",
+    {
+      weekday: "long"
     }
-    group.columns.push(col);
-    group.count++;
-  });
-  return groups;
+  );
+
 }
 
-function timelineClass(value, col) {
-  const text = cleanText(value);
-  if (!text) {
-    if (isLunch(col.timeLabel)) return "blank lunch";
-    return "blank";
+
+/* =========================================================
+   PARSE DATE
+========================================================= */
+
+function parseSheetDate(
+  text
+) {
+
+  const value =
+    String(text)
+      .trim();
+
+
+  /*
+    Format umum:
+    11/8/26
+    26/8/26
+  */
+
+  const parts =
+    value.split("/");
+
+
+  if (
+    parts.length !== 3
+  ) {
+
+    return null;
+
   }
-  const number = Number(text);
-  if (number >= 1 && number <= 7) return "v" + number;
-  return "blank";
-}
 
-function isLunch(time) {
-  return cleanText(time) === "12:00";
-}
 
-function deriveProcess(unit) {
-  const values = Array.isArray(unit.timeline) ? unit.timeline : [];
-  let last = "";
-  values.forEach(v => { if (Number(v) >= 1 && Number(v) <= 7) last = Number(v); });
-  return STAGE_NAMES[last] || "-";
-}
+  let day =
+    Number(parts[0]);
 
-function normalizeGroup(group, sheet) {
-  const g = cleanText(group).toUpperCase();
-  if (g === "A" || g === "B") return g;
-  const s = cleanText(sheet).toUpperCase();
-  if (s.includes("JPCB A")) return "A";
-  if (s.includes("JPCB B")) return "B";
-  return "-";
-}
 
-function cleanText(value) {
-  return String(value ?? "").replace(/^'+|'+$/g, "").replace(/^"+|"+$/g, "").trim();
-}
+  let month =
+    Number(parts[1]);
 
-function dayNameFromDate(value) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat("id-ID", { weekday: "long", timeZone: "Asia/Jakarta" }).format(date);
-}
 
-function getCurrentSlotKey() {
-  const now = new Date();
-  const date = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
-  const time = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Jakarta", hour: "2-digit", minute: "2-digit", hour12: false }).format(now);
-  return `${date} ${time}:00`;
-}
+  let year =
+    Number(parts[2]);
 
-function formatDateTime(value) {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return cleanText(value);
-  return new Intl.DateTimeFormat("id-ID", { timeZone: "Asia/Jakarta", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(date);
-}
 
-function setLoading(on) {
-  const btn = document.getElementById("refreshBtn");
-  if (btn) {
-    btn.disabled = on;
-    btn.textContent = on ? "… Memuat" : "↻ Refresh";
+  if (
+    !day ||
+    !month ||
+    !year
+  ) {
+
+    return null;
+
   }
+
+
+  if (
+    year < 100
+  ) {
+
+    year += 2000;
+
+  }
+
+
+  return new Date(
+    year,
+    month - 1,
+    day
+  );
+
 }
 
-function updateClock() {
-  document.getElementById("clock").textContent = new Intl.DateTimeFormat("id-ID", {
-    timeZone: "Asia/Jakarta", day: "2-digit", month: "2-digit", year: "numeric",
-    hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false
-  }).format(new Date());
+
+/* =========================================================
+   STATUS
+========================================================= */
+
+function setStatus(
+  text
+) {
+
+  const el =
+    document.getElementById(
+      "status"
+    );
+
+
+  if (el) {
+
+    el.textContent =
+      text;
+
+  }
+
 }
 
-function showError(message) {
-  document.getElementById("board").innerHTML = `<div class="error">${escapeHtml(message)}</div>`;
-  document.getElementById("summary").textContent = "Data belum tersedia";
+
+/* =========================================================
+   SET TEXT
+========================================================= */
+
+function setText(
+  id,
+  value
+) {
+
+  const el =
+    document.getElementById(
+      id
+    );
+
+
+  if (el) {
+
+    el.textContent =
+      value;
+
+  }
+
 }
 
-function showToast(message) {
-  const el = document.getElementById("toast");
-  el.textContent = message;
-  el.style.display = "block";
-  clearTimeout(showToast.timer);
-  showToast.timer = setTimeout(() => el.style.display = "none", 2500);
+
+/* =========================================================
+   FORMAT TIME
+========================================================= */
+
+function formatTime(
+  date
+) {
+
+  return date.toLocaleTimeString(
+    "id-ID",
+    {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit"
+    }
+  );
+
 }
 
-function escapeHtml(value) {
-  return String(value ?? "").replace(/[&<>"']/g, c => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
-  }[c]));
+
+/* =========================================================
+   ESCAPE HTML
+========================================================= */
+
+function escapeHtml(
+  value
+) {
+
+  return String(value)
+    .replace(
+      /&/g,
+      "&amp;"
+    )
+    .replace(
+      /</g,
+      "&lt;"
+    )
+    .replace(
+      />/g,
+      "&gt;"
+    )
+    .replace(
+      /"/g,
+      "&quot;"
+    )
+    .replace(
+      /'/g,
+      "&#039;"
+    );
+
 }
