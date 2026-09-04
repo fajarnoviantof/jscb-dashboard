@@ -2,66 +2,270 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JSCB — Joint Process Control Board</title>
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>JSCB Dashboard</title>
+
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
+
   <header class="topbar">
+
     <div class="brand">
-      <div class="eyebrow">WORKSHOP CONTROL SYSTEM</div>
-      <h1>JSCB</h1>
-      <p>JPCB A + JPCB B • Timeline Produksi</p>
+      <div class="brand-title">JSCB</div>
+      <div class="brand-subtitle">
+        JPCB A + JPCB B
+      </div>
     </div>
-    <div class="top-actions">
-      <div id="clock" class="clock">--:--:--</div>
-      <button id="refreshBtn" class="btn primary">↻ Refresh</button>
+
+    <div class="clock" id="clock">
+      --:--:--
     </div>
+
   </header>
 
-  <nav class="tabs">
-    <button class="tab active" data-page="jscb">JSCB</button>
-    <button class="tab" data-page="notification">Notifikasi <span id="notifBadge" class="badge">0</span></button>
-  </nav>
 
-  <main>
-    <section id="page-jscb" class="page active">
+  <main class="container">
+
+    <!-- NAVIGATION -->
+
+    <div class="tabs">
+
+      <button
+        class="tab active"
+        data-page="board"
+      >
+        JSCB
+      </button>
+
+      <button
+        class="tab"
+        data-page="notifications"
+      >
+        NOTIFIKASI
+        <span
+          id="notificationBadge"
+          class="notification-badge hidden"
+        >
+          0
+        </span>
+      </button>
+
+    </div>
+
+
+    <!-- =========================
+         BOARD PAGE
+    ========================== -->
+
+    <section
+      id="boardPage"
+      class="page active"
+    >
+
       <div class="toolbar">
-        <div class="search-wrap">
-          <span>⌕</span>
-          <input id="searchInput" type="search" placeholder="Cari WO, nopol, kendaraan, SA, proses...">
+
+        <div class="search-box">
+
+          <input
+            type="text"
+            id="searchInput"
+            placeholder="Cari ID / WO / kendaraan..."
+            autocomplete="off"
+          >
+
         </div>
-        <div class="filters">
-          <button class="filter active" data-group="ALL">SEMUA</button>
-          <button class="filter" data-group="A">JPCB A</button>
-          <button class="filter" data-group="B">JPCB B</button>
+
+
+        <div class="filter-group">
+
+          <button
+            class="filter-btn active"
+            data-filter="ALL"
+          >
+            ALL
+          </button>
+
+          <button
+            class="filter-btn"
+            data-filter="JPCB A"
+          >
+            JPCB A
+          </button>
+
+          <button
+            class="filter-btn"
+            data-filter="JPCB B"
+          >
+            JPCB B
+          </button>
+
         </div>
-        <div id="summary" class="summary">Memuat data...</div>
+
+
+        <button
+          id="refreshBtn"
+          class="refresh-btn"
+        >
+          ↻ Refresh
+        </button>
+
       </div>
 
-      <div class="board-shell">
-        <div id="board" class="timeline-board">
-          <div class="loading">Memuat timeline...</div>
+
+      <!-- SUMMARY -->
+
+      <div class="summary">
+
+        <div class="summary-card">
+
+          <div class="summary-label">
+            TOTAL UNIT
+          </div>
+
+          <div
+            class="summary-value"
+            id="totalUnits"
+          >
+            0
+          </div>
+
         </div>
+
+
+        <div class="summary-card">
+
+          <div class="summary-label">
+            JPCB A
+          </div>
+
+          <div
+            class="summary-value"
+            id="totalA"
+          >
+            0
+          </div>
+
+        </div>
+
+
+        <div class="summary-card">
+
+          <div class="summary-label">
+            JPCB B
+          </div>
+
+          <div
+            class="summary-value"
+            id="totalB"
+          >
+            0
+          </div>
+
+        </div>
+
+
+        <div class="summary-card">
+
+          <div class="summary-label">
+            NOTIFIKASI
+          </div>
+
+          <div
+            class="summary-value"
+            id="totalNotifications"
+          >
+            0
+          </div>
+
+        </div>
+
       </div>
-      <div class="scroll-hint">Geser horizontal untuk melihat jam/hari berikutnya • Geser vertikal untuk melihat semua unit</div>
+
+
+      <!-- STATUS -->
+
+      <div
+        id="status"
+        class="status"
+      >
+        Memuat data...
+      </div>
+
+
+      <!-- TIMELINE -->
+
+      <div class="timeline-wrapper">
+
+        <div
+          id="timelineBoard"
+          class="timeline-board"
+        >
+
+          <!-- dibuat oleh app.js -->
+
+        </div>
+
+      </div>
+
     </section>
 
-    <section id="page-notification" class="page">
-      <div class="section-head">
+
+    <!-- =========================
+         NOTIFICATION PAGE
+    ========================== -->
+
+    <section
+      id="notificationsPage"
+      class="page"
+    >
+
+      <div class="notification-header">
+
         <div>
-          <h2>NOTIFIKASI</h2>
-          <p>Sumber data: sheet <strong>NOTIFIKASI</strong></p>
+
+          <h2>
+            NOTIFIKASI
+          </h2>
+
+          <p>
+            Data langsung dari sheet NOTIFIKASI
+          </p>
+
         </div>
-        <button id="refreshNotifBtn" class="btn">↻ Refresh</button>
+
+        <button
+          id="refreshNotificationBtn"
+          class="refresh-btn"
+        >
+          ↻ Refresh
+        </button>
+
       </div>
-      <div id="notifications" class="notification-list">
-        <div class="loading">Memuat notifikasi...</div>
+
+
+      <div
+        id="notificationList"
+        class="notification-list"
+      >
+
+        <div class="empty">
+          Memuat notifikasi...
+        </div>
+
       </div>
+
     </section>
+
   </main>
 
-  <div id="toast" class="toast"></div>
+
   <script src="app.js"></script>
+
 </body>
 </html>
