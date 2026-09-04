@@ -1,57 +1,31 @@
-# JSCB GitHub — Timeline A + B
+# JSCB GitHub Dashboard
 
-Versi ini mengubah tampilan dari **7 kolom proses/Kanban** menjadi **timeline horizontal seperti spreadsheet JPCB**.
+Dashboard GitHub Pages untuk menampilkan timeline gabungan **JPCB A + JPCB B** dari Google Spreadsheet.
 
-## Struktur
-
-- `index.html` — tampilan.
-- `style.css` — CSS timeline.
-- `app.js` — frontend pembaca JSON.
-- `GitHubAPI.gs` — Apps Script read-only untuk mengambil JPCB A, JPCB B dan NOTIFIKASI.
+## File
+- `index.html` — halaman dashboard
+- `style.css` — tampilan spreadsheet/timeline
+- `app.js` — mengambil dan menampilkan data
+- `GitHubAPI.gs` — contoh API Apps Script standalone (read-only)
 
 ## Penting
+API pada `app.js` sudah diarahkan ke Web App yang digunakan pada proyek JSCB GITHUB API.
 
-`GitHubAPI.gs` sebaiknya dibuat sebagai **project Apps Script terpisah** tetapi menggunakan spreadsheet yang sama. Jangan mengganti `doGet()` pada sistem JPCB/QC yang sudah ada.
+Jika deployment Apps Script diperbarui, URL Web App tetap dapat dipakai selama deployment yang sama diperbarui ke versi baru.
 
-### 1. Apps Script
+Dashboard hanya membaca data. Tidak ada fungsi di dashboard yang mengubah JPCB A, JPCB B, atau NOTIFIKASI.
 
-Buat project Apps Script baru → tambahkan `GitHubAPI.gs` → paste kode → Deploy sebagai Web App.
+## Struktur sumber
+JPCB A dan JPCB B:
+- Baris 2 = tanggal timeline
+- Baris 3 = jam timeline
+- Data mulai baris 4
+- Kolom A = identitas unit
+- Kolom B = tanggal masuk
+- Kolom C = jam masuk
+- Kolom D = target keluar
+- Kolom E = jam target keluar
+- Kolom F = ACTUAL PROSES
+- Kolom G dan seterusnya = timeline
 
-Set akses sesuai kebutuhan dashboard. Setelah mendapat URL `/exec`, masukkan ke:
-
-```javascript
-const API_URL = "URL_WEB_APP_APPS_SCRIPT";
-```
-
-pada `app.js`.
-
-### 2. GitHub Pages
-
-Upload:
-
-- `index.html`
-- `style.css`
-- `app.js`
-
-`GitHubAPI.gs` tidak perlu di-upload ke GitHub Pages.
-
-## Asumsi struktur JPCB
-
-- Baris tanggal timeline: 2
-- Baris jam: 3
-- Timeline mulai kolom G
-- Data unit mulai baris 4
-
-Jika struktur sumber berbeda, ubah `API_CONFIG` di `GitHubAPI.gs` saja.
-
-## Fitur
-
-- JPCB A + JPCB B digabung dalam satu papan.
-- Header hari → tanggal → jam.
-- Kolom GRUP, IDENTITAS UNIT, ACTUAL PROSES dibuat sticky.
-- Timeline horizontal dan scroll vertikal.
-- Search WO/nopol/kendaraan/SA/proses.
-- Filter JPCB A / JPCB B / Semua.
-- Notifikasi hanya dibaca dari sheet `NOTIFIKASI`.
-- Auto refresh 60 detik.
-- Tidak ada `localStorage` untuk data produksi.
+NOTIFIKASI dibaca dari sheet `NOTIFIKASI`.

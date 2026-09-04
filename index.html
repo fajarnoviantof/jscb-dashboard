@@ -2,270 +2,59 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
-
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>JSCB Dashboard</title>
-
   <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-
   <header class="topbar">
-
-    <div class="brand">
-      <div class="brand-title">JSCB</div>
-      <div class="brand-subtitle">
-        JPCB A + JPCB B
-      </div>
-    </div>
-
-    <div class="clock" id="clock">
-      --:--:--
-    </div>
-
+    <div class="brand">JSCB</div>
+    <div class="subtitle">JPCB A + JPCB B</div>
+    <div id="clock" class="clock">-</div>
   </header>
 
+  <nav class="nav">
+    <button class="nav-btn active" data-page="board">JSCB</button>
+    <button class="nav-btn" data-page="notifications">NOTIFIKASI <span id="notifBadge">0</span></button>
+    <button id="refreshBtn" class="refresh">↻ Refresh</button>
+  </nav>
 
-  <main class="container">
-
-    <!-- NAVIGATION -->
-
-    <div class="tabs">
-
-      <button
-        class="tab active"
-        data-page="board"
-      >
-        JSCB
-      </button>
-
-      <button
-        class="tab"
-        data-page="notifications"
-      >
-        NOTIFIKASI
-        <span
-          id="notificationBadge"
-          class="notification-badge hidden"
-        >
-          0
-        </span>
-      </button>
-
+  <section class="toolbar">
+    <input id="searchInput" type="search" placeholder="Cari WO / nopol / kendaraan...">
+    <div class="filters">
+      <button class="filter active" data-filter="ALL">ALL</button>
+      <button class="filter" data-filter="JPCB A">JPCB A</button>
+      <button class="filter" data-filter="JPCB B">JPCB B</button>
     </div>
+  </section>
 
-
-    <!-- =========================
-         BOARD PAGE
-    ========================== -->
-
-    <section
-      id="boardPage"
-      class="page active"
-    >
-
-      <div class="toolbar">
-
-        <div class="search-box">
-
-          <input
-            type="text"
-            id="searchInput"
-            placeholder="Cari ID / WO / kendaraan..."
-            autocomplete="off"
-          >
-
-        </div>
-
-
-        <div class="filter-group">
-
-          <button
-            class="filter-btn active"
-            data-filter="ALL"
-          >
-            ALL
-          </button>
-
-          <button
-            class="filter-btn"
-            data-filter="JPCB A"
-          >
-            JPCB A
-          </button>
-
-          <button
-            class="filter-btn"
-            data-filter="JPCB B"
-          >
-            JPCB B
-          </button>
-
-        </div>
-
-
-        <button
-          id="refreshBtn"
-          class="refresh-btn"
-        >
-          ↻ Refresh
-        </button>
-
-      </div>
-
-
-      <!-- SUMMARY -->
-
+  <main>
+    <section id="boardPage" class="page active">
       <div class="summary">
-
-        <div class="summary-card">
-
-          <div class="summary-label">
-            TOTAL UNIT
-          </div>
-
-          <div
-            class="summary-value"
-            id="totalUnits"
-          >
-            0
-          </div>
-
-        </div>
-
-
-        <div class="summary-card">
-
-          <div class="summary-label">
-            JPCB A
-          </div>
-
-          <div
-            class="summary-value"
-            id="totalA"
-          >
-            0
-          </div>
-
-        </div>
-
-
-        <div class="summary-card">
-
-          <div class="summary-label">
-            JPCB B
-          </div>
-
-          <div
-            class="summary-value"
-            id="totalB"
-          >
-            0
-          </div>
-
-        </div>
-
-
-        <div class="summary-card">
-
-          <div class="summary-label">
-            NOTIFIKASI
-          </div>
-
-          <div
-            class="summary-value"
-            id="totalNotifications"
-          >
-            0
-          </div>
-
-        </div>
-
+        <div><span>TOTAL UNIT</span><b id="totalUnit">0</b></div>
+        <div><span>JPCB A</span><b id="totalA">0</b></div>
+        <div><span>JPCB B</span><b id="totalB">0</b></div>
+        <div><span>NOTIFIKASI</span><b id="totalNotif">0</b></div>
       </div>
 
+      <div id="status" class="status">Memuat data...</div>
 
-      <!-- STATUS -->
-
-      <div
-        id="status"
-        class="status"
-      >
-        Memuat data...
+      <div class="board-wrap">
+        <div id="board" class="board"></div>
       </div>
-
-
-      <!-- TIMELINE -->
-
-      <div class="timeline-wrapper">
-
-        <div
-          id="timelineBoard"
-          class="timeline-board"
-        >
-
-          <!-- dibuat oleh app.js -->
-
-        </div>
-
-      </div>
-
     </section>
 
-
-    <!-- =========================
-         NOTIFICATION PAGE
-    ========================== -->
-
-    <section
-      id="notificationsPage"
-      class="page"
-    >
-
-      <div class="notification-header">
-
-        <div>
-
-          <h2>
-            NOTIFIKASI
-          </h2>
-
-          <p>
-            Data langsung dari sheet NOTIFIKASI
-          </p>
-
-        </div>
-
-        <button
-          id="refreshNotificationBtn"
-          class="refresh-btn"
-        >
-          ↻ Refresh
-        </button>
-
+    <section id="notificationsPage" class="page">
+      <div class="notif-head">
+        <h2>NOTIFIKASI</h2>
+        <button id="refreshNotifBtn" class="refresh small">↻ Refresh</button>
       </div>
-
-
-      <div
-        id="notificationList"
-        class="notification-list"
-      >
-
-        <div class="empty">
-          Memuat notifikasi...
-        </div>
-
-      </div>
-
+      <div id="notifications" class="notifications"></div>
     </section>
-
   </main>
 
+  <footer>Data terakhir diperbarui <span id="updatedAt">-</span></footer>
 
   <script src="app.js"></script>
-
 </body>
 </html>
